@@ -128,16 +128,6 @@ y_pred = log_model.predict(X_test)
 y_prob = log_model.predict_proba(X_test)[:, 1]
 print(classification_report(y_test, y_pred))
 
-# Accuracy: 0.78
-# Precision: 0.74
-# Recall: 0.58
-# F1-score: 0.65
-
-# Accuracy: 0.77
-# Precision: 0.79
-# Recall: 0.53
-# F1-score: 0.63
-
 plot_roc_curve(log_model, X_test, y_test)
 plt.title('ROC Curve')
 plt.plot([0, 1], [0, 1], 'r--')
