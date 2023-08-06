@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier,
 from sklearn.model_selection import GridSearchCV, cross_validate, RandomizedSearchCV, validation_curve
 
 
-from xgboost import XGBRFClassifier
+from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 
@@ -33,6 +33,7 @@ cv_results = cross_validate(rf_model,
                             X,y,
                             cv=10,
                             scoring=["accuracy", "f1", "roc_auc"])
+
 cv_results['test_accuracy'].mean()#0.75
 cv_results['test_f1'].mean()#0.61
 cv_results['test_roc_auc'].mean()#82
@@ -42,18 +43,12 @@ rf_params = {"max_depth": [5, 8, None],
              "min_samples_split": [2, 5, 8, 15, 20],
              "n_estimators": [100, 200, 500]}
 
-rf_best_grid = GridSearchCV(rf_model,
-                            rf_params,
-                            cv=5,
-                            n_jobs=-1,
-                            verbose=True).fit(X,y)
+rf_best_grid = GridSearchCV(rf_model, rf_params, cv=5, n_jobs=-1, verbose=True).fit(X,y)
 rf_best_grid.best_params_
 
 rf_final = rf_model.set_params(**rf_best_grid.best_params_, random_state=17).fit(X,y)
-cv_results = cross_validate(rf_final,
-                            X,y,
-                            cv=10,
-                            scoring=["accuracy", "f1", "roc_auc"])
+cv_results = cross_validate(rf_final, X,y, cv=10, scoring=["accuracy", "f1", "roc_auc"])
+
 cv_results['test_accuracy'].mean()#0.76
 cv_results['test_f1'].mean()#0.64
 cv_results['test_roc_auc'].mean()#0.82
@@ -105,10 +100,8 @@ val_curve_params(rf_final,X,y,"min_samples_split",range(1, 10),scoring="roc_auc"
 gbm_model = GradientBoostingClassifier(random_state=17)
 gbm_model.get_params()
 
-cv_results = cross_validate(gbm_model,
-                            X, y,
-                            cv=5,
-                            scoring=["accuracy", "f1", "roc_auc"])
+cv_results = cross_validate(gbm_model,X, y, cv=5, scoring=["accuracy", "f1", "roc_auc"])
+
 cv_results['test_accuracy'].mean()# 0.75
 cv_results['test_f1'].mean()# 0.63
 cv_results['test_roc_auc'].mean()#0.82
@@ -168,7 +161,6 @@ lgbm_model = LGBMClassifier(random_state=17)
 lgbm_model.get_params()
 
 cv_results = cross_validate(lgbm_model, X, y, cv=5, scoring=["accuracy", "f1", "roc_auc"])
-
 cv_results['test_accuracy'].mean()
 cv_results['test_f1'].mean()
 cv_results['test_roc_auc'].mean()
@@ -182,8 +174,34 @@ lgbm_best_grid = GridSearchCV(lgbm_model, lgbm_params, cv=5, n_jobs=-1, verbose=
 lgbm_final = lgbm_model.set_params(**lgbm_best_grid.best_params_, random_state=17).fit(X, y)
 
 cv_results = cross_validate(lgbm_final, X, y, cv=5, scoring=["accuracy", "f1", "roc_auc"])
+cv_results['test_accuracy'].mean() #0.76
+cv_results['test_f1'].mean() #0.63
+cv_results['test_roc_auc'].mean() #0.81
 
-cv_results['test_accuracy'].mean()
-cv_results['test_f1'].mean()
-cv_results['test_roc_auc'].mean()
+# New Hiperparametre
+lgbm_params = {"learning_rate": [0.01, 0.02, 0.05, 0.1],
+               "n_estimators": [200, 300, 350, 400],
+               "colsample_bytree": [0.9, 0.8, 1]}
+
+lgbm_best_grid = GridSearchCV(lgbm_model, lgbm_params, cv=5, n_jobs=-1, verbose=True).fit(X, y)
+
+lgbm_final = lgbm_model.set_params(**lgbm_best_grid.best_params_, random_state=17).fit(X, y)
+
+cv_results = cross_validate(lgbm_final, X, y, cv=5, scoring=["accuracy", "f1", "roc_auc"])
+cv_results['test_accuracy'].mean() #0.76
+cv_results['test_f1'].mean() #0.61
+cv_results['test_roc_auc'].mean() #0.82
+
+# Hyperparameter optimization only for n_estimators
+lgbm_model = LGBMClassifier(random_state=17, colsample_bytree=0.9, learning_rate=0.01)
+lgbm_params = {"n_estimators": [200, 400, 1000, 5000, 8000, 9000, 10000]}
+
+lgbm_best_grid = GridSearchCV(lgbm_model, lgbm_params, cv=5, n_jobs=-1, verbose=True).fit(X, y)
+
+lgbm_final = lgbm_model.set_params(**lgbm_best_grid.best_params_, random_state=17).fit(X, y)
+
+cv_results = cross_validate(lgbm_final, X, y, cv=5, scoring=["accuracy", "f1", "roc_auc"])
+cv_results['test_accuracy'].mean() #0.76
+cv_results['test_f1'].mean() #0.61
+cv_results['test_roc_auc'].mean() #0.82
 
