@@ -205,3 +205,69 @@ cv_results['test_accuracy'].mean() #0.76
 cv_results['test_f1'].mean() #0.61
 cv_results['test_roc_auc'].mean() #0.82
 
+# CatBoost
+catboost_model = CatBoostClassifier(random_state=17, verbose=False)
+
+cv_results = cross_validate(catboost_model, X, y, cv=5, scoring=["accuracy", "f1", "roc_auc"])
+cv_results['test_accuracy'].mean() #0.77
+cv_results['test_f1'].mean() #0.65
+cv_results['test_roc_auc'].mean() #0.83
+
+catboost_params = {"iterations": [200, 500],
+                   "learning_rate": [0.01, 0.1],
+                   "depth": [3, 6]}
+
+catboost_best_grid = GridSearchCV(catboost_model, catboost_params, cv=5, n_jobs=-1, verbose=True).fit(X, y)
+catboost_final = catboost_model.set_params(**catboost_best_grid.best_params_, random_state=17).fit(X, y)
+
+cv_results = cross_validate(catboost_final, X, y, cv=5, scoring=["accuracy", "f1", "roc_auc"])
+cv_results['test_accuracy'].mean() #0.77
+cv_results['test_f1'].mean() #0.63
+cv_results['test_roc_auc'].mean() #0.84
+
+
+# Feature Importance
+plot_importance(rf_final, X)
+plot_importance(gbm_final, X)
+plot_importance(xgboost_final, X)
+plot_importance(lgbm_final, X)
+plot_importance(catboost_final, X)
+
+# Hyperparameter Optimization with RandomSearchCV
+rf_model = RandomForestClassifier(random_state=17)
+
+rf_random_params = {"max_depth": np.random.randint(5, 50, 10),
+                    "max_features": [3, 5, 7, "auto", "sqrt"],
+                    "min_samples_split": np.random.randint(2, 50, 20),
+                    "n_estimators": [int(x) for x in np.linspace(start=200, stop=1500, num=10)]}
+
+rf_random = RandomizedSearchCV(estimator=rf_model,
+                               param_distributions=rf_random_params,
+                               n_iter=100,  # denenecek parametre sayısı
+                               cv=3,
+                               verbose=True,
+                               random_state=42,
+                               n_jobs=-1)
+rf_random.fit(X, y)
+rf_random.best_params_
+rf_random_final = rf_model.set_params(**rf_random.best_params_, random_state=17).fit(X, y)
+
+cv_results = cross_validate(rf_random_final, X, y, cv=5, scoring=["accuracy", "f1", "roc_auc"])
+cv_results['test_accuracy'].mean() #0.76
+cv_results['test_f1'].mean() #0.62
+cv_results['test_roc_auc'].mean() #0.83
+
+
+# Analyzing Model Complexity with Learning Curves
+rf_val_params = [["max_depth", [5, 8, 15, 20, 30, None]],
+                 ["max_features", [3, 5, 7, "auto"]],
+                 ["min_samples_split", [2, 5, 8, 15, 20]],
+                 ["n_estimators", [10, 50, 100, 200, 500]]]
+
+
+rf_model = RandomForestClassifier(random_state=17)
+for i in range(len(rf_val_params)):
+    val_curve_params(rf_model, X, y, rf_val_params[i][0], rf_val_params[i][1])
+
+rf_val_params[0][1]
+#[5, 8, 15, 20, 30, None]
