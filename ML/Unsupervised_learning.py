@@ -8,6 +8,9 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.model_selection import cross_val_score, GridSearchCV
 from scipy.cluster.hierarchy import linkage, dendrogram
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+
 
 df = pd.read_csv("datasets/USArrests.csv", index_col=0)
 df.head()
@@ -108,7 +111,140 @@ df["hi_cluster_no"] = df["hi_cluster_no"] + 1
 df["kmeans_cluster_no"] = clusters_kmeans
 df["kmeans_cluster_no"] = df["kmeans_cluster_no"] + 1
 
+# Principal Component Analysis (PCA)
+df = pd.read_csv("datasets/hitters.csv")
+df.head()
+df.info()
 
+num_cols = [col for col in df.columns if df[col].dtypes != "O" and "Salary" not in col]
+df[num_cols].head()
+
+df = df[num_cols]
+df.dropna(inplace=True)
+df.shape
+
+df = StandardScaler().fit_transform(df)
+
+pca = PCA()
+pca_fit = pca.fit_transform(df)
+pca.explained_variance_ratio_
+np.cumsum(pca.explained_variance_ratio_)
+
+#Optimal number of components - pca
+pca = PCA().fit(df)
+plt.plot(np.cumsum(pca.explained_variance_ratio_))
+plt.xlabel("Component")
+plt.ylabel("Cumulative Rate of Variance")
+plt.show()
+
+#Final PCA
+pca = PCA(n_components=3)
+pca_fit = pca.fit_transform(df)
+
+pca.explained_variance_ratio_
+np.cumsum(pca.explained_variance_ratio_)
+
+# Principal Component Regression
+df = pd.read_csv("datasets/Hitters.csv")
+df.shape
+
+len(pca_fit)
+num_cols = [col for col in df.columns if df[col].dtypes != "O" and "Salary" not in col]
+len(num_cols)
+
+others = [col for col in df.columns if col not in num_cols]
+pd.DataFrame(pca_fit, columns=["PC1","PC2","PC3"]).head()
+df[others].head()
+
+final_df = pd.concat([pd.DataFrame(pca_fit, columns=["PC1","PC2","PC3"]),
+                      df[others]], axis=1)
+final_df.head()
+
+def label_encoder(dataframe, binary_col):
+    labelencoder = LabelEncoder()
+    dataframe[binary_col] = labelencoder.fit_transform(dataframe[binary_col])
+    return dataframe
+
+for col in ["NewLeague", "Division", "League"]:
+    label_encoder(final_df, col)
+
+final_df.dropna(inplace=True)
+
+y = final_df["Salary"]
+X = final_df.drop(["Salary"], axis=1)
+
+lm = LinearRegression()
+rmse = np.mean(np.sqrt(-cross_val_score(lm, X, y, cv=5, scoring="neg_mean_squared_error")))
+y.mean()
+
+cart = DecisionTreeRegressor()
+rmse = np.mean(np.sqrt(-cross_val_score(cart, X, y, cv=5, scoring="neg_mean_squared_error")))
+
+cart_params = {'max_depth': range(1, 11),
+               "min_samples_split": range(2, 20)}
+
+# GridSearchCV
+cart_best_grid = GridSearchCV(cart,
+                              cart_params,
+                              cv=5,
+                              n_jobs=-1,
+                              verbose=True).fit(X, y)
+
+cart_final = DecisionTreeRegressor(**cart_best_grid.best_params_, random_state=17).fit(X, y)
+rmse = np.mean(np.sqrt(-cross_val_score(cart_final, X, y, cv=5, scoring="neg_mean_squared_error")))
+
+#Visualizing Multidimensional Data in 2D with PCA
+# Breast Cancer
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 500)
+df = pd.read_csv("datasets/breast_cancer.csv")
+
+y = df["diagnosis"]
+X = df.drop(["diagnosis", "id"], axis=1)
+
+def create_pca_df(X, y):
+    X = StandardScaler().fit_transform(X)
+    pca = PCA(n_components=2)
+    pca_fit = pca.fit_transform(X)
+    pca_df = pd.DataFrame(data=pca_fit, columns=['PC1', 'PC2'])
+    final_df = pd.concat([pca_df, pd.DataFrame(y)], axis=1)
+    return final_df
+
+pca_df = create_pca_df(X, y)
+
+def plot_pca(dataframe, target):
+    fig = plt.figure(figsize=(7, 5))
+    ax = fig.add_subplot(1, 1, 1)
+    ax.set_xlabel('PC1', fontsize=15)
+    ax.set_ylabel('PC2', fontsize=15)
+    ax.set_title(f'{target.capitalize()} ', fontsize=20)
+
+    targets = list(dataframe[target].unique())
+    colors = random.sample(['r', 'b', "g", "y"], len(targets))
+
+    for t, color in zip(targets, colors):
+        indices = dataframe[target] == t
+        ax.scatter(dataframe.loc[indices, 'PC1'], dataframe.loc[indices, 'PC2'], c=color, s=50)
+    ax.legend(targets)
+    ax.grid()
+    plt.show()
+
+plot_pca(pca_df, "diagnosis")
+
+# Iris
+import seaborn as sns
+df = sns.load_dataset("iris")
+y = df["species"]
+X = df.drop(["species"], axis=1)
+pca_df = create_pca_df(X, y)
+plot_pca(pca_df, "species")
+
+# Diabetes
+df = pd.read_csv("datasets/diabetes.csv")
+y = df["Outcome"]
+X = df.drop(["Outcome"], axis=1)
+pca_df = create_pca_df(X, y)
+plot_pca(pca_df, "Outcome")
 
 
 
